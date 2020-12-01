@@ -75,6 +75,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.label_offset = self.dot_size / 4
         self.label_height = self.font_size / 6
         self.bridge_line = pg.mkPen(color=(0, 0, 0), width=1.5, style=QtCore.Qt.SolidLine)
+        # Offset for next bridges to be placed below on a specific column
+        self.point_height_offset = -10
+        # space between columns in graph
+        self.x_offset = 30
+        self.x_s = 20
+        self.y_s = 60
 
         self.font.setPixelSize(self.font_size)
 
@@ -86,15 +92,15 @@ class MainWindow(QtWidgets.QMainWindow):
     # Plot black point and annotation text
     # x, y => coords, name => name of the point, index => index of name,
     # side => is point name on left (0) or right (1)
-    def plot_point(self, x, y, name, index, side):
-        if not side:
-            t_up.setPos(x - 1, y - self.font_size / 6)
-        else:
-            t_up.setPos(x + dot_size/2, y - self.font_size / 6)
-        t_up.setFont(self.font)
-
-        self.graphWidget.addItem(t_up)
+    # def plot_point(self, x, y, name, index, side):
+    #     if not side:
+    #         t_up.setPos(x - 1, y - self.font_size / 6)
+    #     else:
+    #         t_up.setPos(x + dot_size/2, y - self.font_size / 6)
+    #     t_up.setFont(self.font)
     #
+    #     self.graphWidget.addItem(t_up)
+    # #
 
     # Plot circle with symbol inside, representing specific sum
     # Firstly, correct coords by the radius size
@@ -168,15 +174,9 @@ class MainWindow(QtWidgets.QMainWindow):
     # size is the length of arm
     # dir 1 => left, 0 => right (direction of point's arm/bridge)
     # returns => coords of the end of bridge, will be the new point
-    def plot_bridge(self, bridge, label="", index=0):
-
+    def plot_bridge(self, bridge, label="", index=0, label_side=LABEL_LEFT):
         if label != "":
             label_item = pg.TextItem(html=label + f"<sub>{index}</sub>", anchor=(1, 1))
-
-            if bridge.bridge_side() == BRIDGE_LEFT:
-                label_side = LABEL_RIGHT
-            else:
-                label_side = LABEL_LEFT
 
             if label_side == LABEL_LEFT:
                 label_item.setPos(bridge.left_point.x - self.label_offset, bridge.left_point.y - self.label_height)
@@ -192,88 +192,66 @@ class MainWindow(QtWidgets.QMainWindow):
     #
 
     # Given set of input points m_in, output points m_out and x_s, y_s as starting coords
-    def plot_scheme(self, m_in, m_out, sum_labels, x_s, y_s):
-        # space between columns in graph
-        x_offset = 30
-        # coords of specific points and sums
-        # x coordinates
-        m_in_cds  = []
-        # coordinates of points on the left of sum
-        m_sum_cds_l = []
-        # coordinates of points on the right of sum
-        m_sum_cds_r = []
+    def plot_scheme(self, mx_list):
+        # Create starting point
+        start_bridge  = Bridge(Point(self.x_s, self.y_s), length=self.bridge_size)
 
+        # First, draw second column, that input (x) column will connect to
+        # Save all coordinates of bridges in a new_bridges list
+        new_bridges = list(self.set_bridges(mx_list[0].shape[1], start_bridge))
 
-
-        # y coordinates
-        new_col_cds  = []
-        next_col_cds = []
-        mx_list      = [m_in, m_out]
-        #
-
-        # -----------------------------------
-        # phase 1 - plot all points
-        # plot starting point
-        # start point for drawing graph
-        start_bridge  = Bridge(Point(x_s, y_s), length=self.bridge_size)
-        point_height_offset = - 10
-
-        for pt_nr in range(mx_list[0].shape[1]):
+        # Secondly, iterate over input (x) points and connect each of them with specific
+        # bridge they should be connected to
+        # Iterate over rows (inputs)
+        for pt_nr in range(mx_list[0].shape[0]):
+            # Plot nth input (x) bridge and give it a label
             sp = self.plot_bridge(start_bridge, "x", index=pt_nr)
 
-            if pt_nr == 0:
-                y_offset = 0
-                for i in range(mx_list[0].shape[0]):
-                    next_bridge = Bridge(sp + Point(x_offset, y_offset), length=self.bridge_size)
-                    self.plot_bridge(next_bridge)
-                    new_col_cds  += [next_bridge.left_point]
-                    next_col_cds += [next_bridge.right_point]
-                    y_offset -= 10
+            # Iterate over next column of bridges (columns)
+            # Connect each input bridge which next bridge it should be connected to
+            for coord in range(mx_list[0].shape[1]):
+                self.plot_connect_points(sp, new_bridges[coord].left_point, line_type=mx_list[0][pt_nr][coord])
+
+            # Create offset, space in Y axis so that next input (x) bridge will be plotted below
+            start_bridge += Point(0, self.point_height_offset)
+        #
+
+        #
+        # Next, iterate over remaining matrices in the list and for each matrix:
+        for mx in mx_list[1:-1]:
+            # Reinitialize start point - just to make all points in next column start from the same Y height
+            start_bridge = Bridge(Point(self.x_s, self.y_s), length=self.bridge_size)
+            new_bridges = list(self.set_bridges(mx_list[-1].shape[1], start_bridge))
+            # For each point in the current input (or just previous) column
+            # connect it to the specific point in next column that it should be connected to
+            for pt_nr in range(mx.shape[0]):
+                for coord in range(mx.shape[1]):
+                    self.plot_connect_points(new_bridges[pt_nr].right_point, new_bridges[coord].left_point, line_type=mx_list[0][pt_nr][coord])
             #
-            for coord in range(mx_list[0].shape[0]):
-                self.plot_connect_points(sp, new_col_cds[coord], line_type=mx_list[0][coord][pt_nr])
-
-            start_bridge += Point(0, point_height_offset)
         #
 
+        # Draw next column of bridges that it will connect to
+        # Reinitialize start point
+        start_bridge = Bridge(Point(self.x_s, self.y_s), length=self.bridge_size)
+        last_bridges = list(self.set_bridges(mx_list[-1].shape[1], start_bridge, ["y", LABEL_RIGHT]))
 
-
-
-        # plot input (x)i points
-        # y_offset = 0
-        # for i in range(m_in.shape[0]):
-        #     self.plot_point(x_s, y_s + y_offset, "x", i, 0)
-        #     new_point = self.plot_bridge(x_s, y_s + y_offset, 5)
-        #     m_in_cds += [new_point]
-        #     y_offset -= 10
-
-        # plot sum (s)i circles
-        # y_offset = 0
-        # for s in range(m_in.shape[1]):
-        #     self.plot_sum(x_s + x_offset, y_s + y_offset, *sum_labels[s], 3)
-        #     m_sum_cds_l += [(x_s + x_offset - 3, y_s + y_offset)]
-        #     m_sum_cds_r += [(x_s + x_offset + 3, y_s + y_offset)]
-        #     y_offset -= 10
+        for pt_nr in range(mx_list[-1].shape[0]):
+            for coord in range(mx_list[-1].shape[1]):
+                self.plot_connect_points(new_bridges[pt_nr].right_point, last_bridges[coord].left_point, line_type=mx_list[-1][pt_nr][coord])
         #
-        #
-        # # plot output (y)i points
-        # y_offset = 0
-        # for i in range(m_out.shape[1]):
-        #     self.plot_point(x_s + 2 * x_offset, y_s + y_offset, "y", i, 1)
-        #     new_point = self.plot_bridge(x_s + 2 * x_offset, y_s + y_offset, -5)
-        #     m_out_cds += [new_point]
-        #     y_offset -= 10
+    #
 
-
-        # -----------------------------------
-        # phase 2 - connect points and sums
-        # connect input points and sums
-        # for cds, val in ndenumerate(m_in):
-        #     self.plot_connect_points(m_in_cds[cds[0]], m_sum_cds_l[cds[1]], val)
-        #
-        # # connect output points and sums
-        # for cds, val in ndenumerate(m_out):
-        #     self.plot_connect_points(m_sum_cds_r[cds[0]], m_out_cds[cds[1]], val)
+    def set_bridges(self, mx, start_bridge, params=None):
+        y_offset = 0
+        for i in range(mx):
+            next_bridge = Bridge(start_bridge.right_point + Point(self.x_offset, y_offset), length=self.bridge_size)
+            if params == None:
+                self.plot_bridge(next_bridge)
+            else:
+                self.plot_bridge(next_bridge, params[0], i, params[1])
+            yield next_bridge
+            y_offset += self.point_height_offset
+        self.x_offset += self.x_offset
     #
 
 
@@ -298,7 +276,7 @@ def main():
     m_in, m_out, sum_labels = get_scheme_4()
 
 
-    main.plot_scheme(m_in, m_out, sum_labels, 20, 60)
+    main.plot_scheme([m_in, m_out])
 
     main.show()
     sys.exit(app.exec_())

@@ -36,10 +36,3 @@ class Bridge:
     # Add Point() (offset) to a bridge's points
     def __add__(self, other):
         return Bridge(self.left_point + other, self.length)
-
-    def bridge_side(self):
-        if self.length > 0:
-            return BRIDGE_RIGHT
-        else:
-            return BRIDGE_LEFT
-    #
