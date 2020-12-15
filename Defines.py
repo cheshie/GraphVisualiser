@@ -17,8 +17,11 @@ class Point:
         return cls(point.x, point.y)
 
     def __add__(self, other):
-        assert type(other) != type(Point)
-        return Point(self.x + other.x, self.y + other.y)
+        if isinstance(other, Point):
+            return Point(self.x + other.x, self.y + other.y)
+        if isinstance(other, int):
+            return Point(self.x + other, self.y + other)
+    #
 
     def __str__(self):
         return str("(x: " + str(self.x) + " y: " + str(self.y) + ")")
@@ -35,4 +38,5 @@ class Bridge:
 
     # Add Point() (offset) to a bridge's points
     def __add__(self, other):
-        return Bridge(self.left_point + other, self.length)
+        if isinstance(other, Point):
+            return Bridge(self.left_point + other, self.length)
