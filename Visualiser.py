@@ -1,75 +1,11 @@
-from collections import namedtuple
-from random import randint, random
-from PyQt5 import QtWidgets
-from PyQt5.QtGui import QFont, QPainter, QPicture
-from PyQt5.QtWidgets import QApplication
-from pyqtgraph import PlotWidget, plot, QtCore
-import pyqtgraph as pg
-import sys
-from numpy import array, zeros, ndenumerate, transpose
-from Defines import *
-from examples import *
-
-
-# shapes from: github.com/abhilb/pyqtgraphutils/blob/master/pyqtgraphutils.py
-class CircleItem(pg.GraphicsObject):
-    def __init__(self, center, radius):
-        pg.GraphicsObject.__init__(self)
-        self.center = center
-        self.radius = radius
-        self.generatePicture()
-
-    def generatePicture(self):
-        self.picture = QPicture()
-        p = QPainter(self.picture)
-        p.setPen(pg.mkPen('k'))
-        # TODO: how to draw ellipse as ideal circle????
-        # TODO: floats here cause warning. Understand why
-        p.drawEllipse(int(self.center[0]), int(self.center[1] - self.radius), self.radius * 2, self.radius * 2)
-        p.end()
-
-    def paint(self, p, *args):
-        p.drawPicture(0, 0, self.picture)
-
-    def boundingRect(self):
-        return QtCore.QRectF(self.picture.boundingRect())
-
-
-class RectangleItem(pg.GraphicsObject):
-    def __init__(self, topLeft, size):
-        pg.GraphicsObject.__init__(self)
-        self.topLeft = topLeft
-        self.size = size
-        self.generatePicture()
-
-    def generatePicture(self):
-        self.picture = QPicture()
-        p = QPainter(self.picture)
-        p.setPen(pg.mkPen('k'))
-        tl = QtCore.QPointF(self.topLeft[0], self.topLeft[1])
-        size = QtCore.QSizeF(self.size[0], self.size[1])
-        p.drawRect(QtCore.QRectF(tl, size))
-        p.end()
-
-    def paint(self, p, *args):
-        p.drawPicture(0, 0, self.picture)
-
-    def boundingRect(self):
-        return QtCore.QRectF(self.picture.boundingRect())
-    #
-#
+from Defines.Defines import *
+from Defines.Labels import *
 
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
 
-        self.graphWidget = pg.PlotWidget()
-        self.setCentralWidget(self.graphWidget)
-
-        self.graphWidget.setBackground('w')
-        self.graphWidget.getPlotItem().hideAxis('bottom')
-        self.graphWidget.getPlotItem().hideAxis('left')
         self.font = QFont()
 
         self.font_size = 15
@@ -96,7 +32,257 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
+
+        self.window_size = (1000, 600)
+        self.window_pos = (800, 400)
+
+        self.setWindowTitle('MOV - Matrix Optimization Visualizer')
+        self.setStyleSheet(load_stylesheet(qt_api='pyqt5'))
+        self.setGeometry(*self.window_pos, *self.window_size)
+        self.setFixedSize(*self.window_size)
+        self._createMenu()
+        self._createToolBar()
+        self._createStatusBar()
+        self._setCentralLayout()
     #
+
+    def _createMenu(self):
+        self.menu = self.menuBar().addMenu("&Menu")
+        self.menuBar().addMenu("&Theme")
+        self.menuBar().addMenu("&About")
+        self.menu.addAction('&Exit', self.close)
+    #
+
+    def _createToolBar(self):
+        tools = QToolBar()
+        # Geffe = tools.addAction(Window.actions[0], self._change_lfsr3_state)
+        # Geffe.setToolTip("Geffe Random Number Generator")
+        # Geffe.setFont(Window.font_toolbar)
+        # tools.addSeparator()
+        # StopGo = tools.addAction(Window.actions[1], self._change_lfsr3_state)
+        # StopGo.setToolTip("Stop&Go Random Number Generator")
+        # StopGo.setFont(Window.font_toolbar)
+        # tools.addSeparator()
+        # Shrinking = tools.addAction(Window.actions[2], self._change_lfsr3_state)
+        # Shrinking.setToolTip("Shrinking Random Number Generator")
+        # Shrinking.setFont(Window.font_toolbar)
+        self.addToolBar(tools)
+    #
+
+    def _createStatusBar(self):
+        self._status = QStatusBar()
+        self._status.showMessage("")
+        self.setStatusBar(self._status)
+    #
+
+    def _setCentralLayout(self):
+        grid = QGridLayout()
+        centralWidget = QWidget()
+
+        # params group defines view of all parameters to plotting graph
+        def params_group():
+            widgets_view = []
+            # Frame that will hold horizontal buttons layout
+            button_frame = QFrame()
+            # Create horizontal layout
+            central_grid = QGridLayout()
+
+            # First section - equation parameters
+            # Label
+            eq_label = QLabel(params_lbl_eq)
+            # Equation
+            equation = QLineEdit()
+            equation.setFixedWidth(120)
+            equation.setToolTip(equation_lbl_tooltip)
+            # Button to set matrices
+            get_mx_button = QPushButton(set_data_lbl)
+            get_mx_button.clicked.connect(self._get_data_dialog)
+            get_mx_button.setToolTip(set_data_tooltip)
+
+            # Second section - graph specific parameters
+            # Label
+            gr_label = QLabel(graph_params_lbl)
+            # Parameter 1 - Column offset
+            col_offset = QSpinBox()
+            col_offset.setRange(1, 1000)
+            col_offset.setValue(self.x_offset)
+            col_offset_lbl = QLabel(column_offset_lbl)
+            col_offset_lbl.setToolTip(column_offset_tooltip)
+            # Parameter 2 - Vertical offset
+            ver_offset = QSpinBox()
+            ver_offset.setRange(-1000, -1)
+            ver_offset.setValue(self.point_height_offset)
+            ver_offset_lbl = QLabel(vertical_offset_lbl)
+            ver_offset_lbl.setToolTip(vertical_offset_tooltip)
+            # Parameter 3 - Bridge size
+            br_size = QSpinBox()
+            br_size.setRange(1, 1000)
+            br_size.setValue(self.bridge_size)
+            br_size_lbl = QLabel(bridge_size_lbl)
+            br_size_lbl.setToolTip(bridge_size_tooltip)
+            # TODO: grid enable, disable
+
+            # Third section - fonts and labels on graph
+            # Label
+            fonts_label = QLabel(fonts_labels_lbl)
+            # Fonts for X, Y and Sums
+            labels_layout = QHBoxLayout()
+            labels_frame  = QFrame()
+            X_lbl = QLabel(x_label)
+            Y_lbl = QLabel(y_label)
+            Sum_lbl = QLabel(sum_label)
+
+            x_text = QLineEdit()
+            x_text.setFixedWidth(20)
+            x_text.setText(self.input_label)
+
+            y_text = QLineEdit()
+            y_text.setFixedWidth(20)
+            y_text.setText(self.out_label)
+
+            sum_text = QLineEdit()
+            sum_text.setFixedWidth(20)
+            sum_text.setText(self.sum_label)
+
+            labels_layout.addWidget(X_lbl)
+            labels_layout.addWidget(x_text)
+            labels_layout.addWidget(Y_lbl)
+            labels_layout.addWidget(y_text)
+            labels_layout.addWidget(Sum_lbl)
+            labels_layout.addWidget(sum_text)
+            labels_frame.setLayout(labels_layout)
+
+            font_size = QSpinBox()
+            font_size.setRange(1, 1000)
+            font_size.setValue(self.font_size)
+            font_size_lbl = QLabel(font_size_label)
+            font_size_lbl.setToolTip(font_size_tooltip)
+
+            # Fourth section - buttons to generate and save graphs
+            # Label
+            generate_section = QLabel(generate_section_label)
+            # Button to generate results on graph
+            generate_button = QPushButton(generate_label)
+            generate_button.setFixedWidth(30)
+            generate_button.clicked.connect(self.generate_button)
+            generate_button.setToolTip(generate_label_tooltip)
+            # Button to export results to a file
+            export_button = QPushButton(export_label)
+            export_button.setFixedWidth(30)
+            export_button.clicked.connect(self.export_button)
+            export_button.setToolTip(export_label_tooltip)
+
+            # First section
+            central_grid.addWidget(eq_label, *(0, 0))
+            central_grid.addWidget(equation, *(1, 0))
+            central_grid.addWidget(get_mx_button, *(1, 1))
+            # Second section
+            central_grid.addWidget(gr_label, *(2, 0))
+            central_grid.addWidget(col_offset_lbl, *(3, 0))
+            central_grid.addWidget(col_offset, *(3, 1))
+            central_grid.addWidget(ver_offset_lbl, *(4, 0))
+            central_grid.addWidget(ver_offset, *(4, 1))
+            central_grid.addWidget(br_size_lbl, *(5, 0))
+            central_grid.addWidget(br_size, *(5, 1))
+            # Third section
+            central_grid.addWidget(fonts_label, *(6, 0))
+            central_grid.addWidget(labels_frame, *(7, 0))
+            central_grid.addWidget(font_size_lbl, *(8, 0))
+            central_grid.addWidget(font_size, *(8, 1))
+            # Fourth section
+            central_grid.addWidget(generate_section, *(9, 0))
+            central_grid.addWidget(generate_button, *(10, 0))
+            central_grid.addWidget(export_button, *(10, 1))
+
+            # Add layout to frame
+            button_frame.setLayout(central_grid)
+            # Append frame to widgets
+            widgets_view.append(button_frame)
+
+            return widgets_view
+        #
+
+        # graphview group defines plotting window view and progress bar
+        # that shows the status of computation
+        def graphview_group():
+            widgets_view = []
+            widgets_refs = []
+            verlay = QVBoxLayout()
+            graph_frame = QFrame()
+
+            graph_widget = pg.PlotWidget()
+            graph_widget.setBackground('w')
+            graph_widget.getPlotItem().hideAxis('bottom')
+            graph_widget.getPlotItem().hideAxis('left')
+            verlay.addWidget(graph_widget)
+            widgets_refs.append(graph_widget)
+
+            test_progress = QProgressBar()
+            test_progress.setValue(0)
+            test_progress.setTextVisible(True)
+            progress_txt = "%p%".format(0)
+            test_progress.setFormat(progress_txt)
+            verlay.addWidget(test_progress)
+            widgets_refs.append(graph_widget)
+
+            verlay.addStretch()
+            graph_frame.setLayout(verlay)
+            widgets_view.append(graph_frame)
+            return widgets_view, widgets_refs
+        #
+
+        # Create groups of widgets based on above functions
+        gt = namedtuple("Group", ["box", "layout", "widgets", "pos"])
+        groups = (gt(box=QGroupBox("Parameters"), layout=QVBoxLayout(), widgets=[], pos=(0, 0)),
+                  gt(box=QGroupBox("Graph View"), layout=QVBoxLayout(), widgets=[], pos=(0, 1)))
+
+        # define lists of widgets (groups)
+        group_params = params_group()
+        group_graph, graph_refs = graphview_group()
+
+        # assign defined lists of widgets
+        groups[0].widgets.extend(group_params)
+        groups[1].widgets.extend(group_graph)
+        # add references
+        self.graphWidget, self.progressBar = graph_refs[0], graph_refs[1]
+
+        # Assign all groups to a grid and plot them
+        for g in groups:
+            for w in g.widgets:
+                g.layout.addWidget(w)
+            g.box.setLayout(g.layout)
+            grid.addWidget(g.box, *g.pos)
+
+        # Set layouts
+        centralWidget.setLayout(grid)
+        self.setCentralWidget(centralWidget)
+    #
+
+    def generate_button(self):
+        main.plot_scheme(example_2[::-1], sum_matrix_index=example_2_sum_i)
+
+    def export_button(self):
+        print("OK 2")
+
+    def _get_data_dialog(self):
+        # Initial settings for dialog
+        d = QDialog()
+        d.setStyleSheet(load_stylesheet(qt_api='pyqt5'))
+        pos = self.pos()
+        d.move(pos.x() + 100, pos.y() + 200)
+        d.setWindowTitle("Add data")
+        d.setWindowModality(pqtc.Qt.ApplicationModal)
+
+        # Create horizontal layout
+        dialog_grid = QGridLayout()
+
+        m1 = QLabel("M1")
+        m1_button = QPushButton("Add file")
+        dialog_grid.addWidget(m1, *(0,0))
+        dialog_grid.addWidget(m1_button, *(0,1))
+
+        d.setLayout(dialog_grid)
+        d.exec_()
 
     # in case there is junction, bridge must be plotted to extend point's arm
     # x, y is just point coords
@@ -324,8 +510,6 @@ class MainWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     main = MainWindow()
-
-    main.plot_scheme(example_2[::-1], sum_matrix_index=example_2_sum_i)
 
     main.show()
     sys.exit(app.exec_())
