@@ -19,6 +19,11 @@ LABEL_RIGHT = 1
 BRIDGE_LEFT  = 0
 BRIDGE_RIGHT = 1
 
+# Define order in which the IN matrices will be passed
+# Example: Y = A * B * SUM * D (equation), list of matrices: [A, B, S, D], ORDER: ORDER_LR
+ORDER_LR = 1
+ORDER_RL = 0
+
 class Point:
     def __init__(self, x=0, y=0):
         self.x = x

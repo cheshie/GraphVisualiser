@@ -43,7 +43,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setGeometry(*self.window_pos, *self.window_size)
         self.setFixedSize(*self.window_size)
         self._createMenu()
-        self._createToolBar()
         self._createStatusBar()
         self._setCentralLayout()
     #
@@ -51,24 +50,17 @@ class MainWindow(QtWidgets.QMainWindow):
     def _createMenu(self):
         self.menu = self.menuBar().addMenu("&Menu")
         self.menuBar().addMenu("&Theme")
+        self.menuBar().addMenu("&Tools")
         self.menuBar().addMenu("&About")
         self.menu.addAction('&Exit', self.close)
     #
 
-    def _createToolBar(self):
-        tools = QToolBar()
-        # Geffe = tools.addAction(Window.actions[0], self._change_lfsr3_state)
-        # Geffe.setToolTip("Geffe Random Number Generator")
-        # Geffe.setFont(Window.font_toolbar)
-        # tools.addSeparator()
-        # StopGo = tools.addAction(Window.actions[1], self._change_lfsr3_state)
-        # StopGo.setToolTip("Stop&Go Random Number Generator")
-        # StopGo.setFont(Window.font_toolbar)
-        # tools.addSeparator()
-        # Shrinking = tools.addAction(Window.actions[2], self._change_lfsr3_state)
-        # Shrinking.setToolTip("Shrinking Random Number Generator")
-        # Shrinking.setFont(Window.font_toolbar)
-        self.addToolBar(tools)
+    # def _createToolBar(self):
+        # tools = QToolBar()
+        # Action1 = tools.addAction(Window.actions[0], self.action)
+        # Action1.setToolTip("Action tip")
+        # Action1.setFont(Window.font_toolbar)
+        # self.addToolBar(tools)
     #
 
     def _createStatusBar(self):
@@ -225,7 +217,7 @@ class MainWindow(QtWidgets.QMainWindow):
             progress_txt = "%p%".format(0)
             test_progress.setFormat(progress_txt)
             verlay.addWidget(test_progress)
-            widgets_refs.append(graph_widget)
+            widgets_refs.append(test_progress)
 
             verlay.addStretch()
             graph_frame.setLayout(verlay)
@@ -261,7 +253,7 @@ class MainWindow(QtWidgets.QMainWindow):
     #
 
     def generate_button(self):
-        main.plot_scheme(example_3[::-1], sum_matrix_index=example_3_sum_i)
+        main.plot_scheme(example_4, order=ORDER_LR)
 
     def export_button(self):
         print("OK 2")
@@ -375,7 +367,17 @@ class MainWindow(QtWidgets.QMainWindow):
     #
 
     # Given set of input points m_in, output points m_out and x_s, y_s as starting coords
-    def plot_scheme(self, mx_list, sum_matrix_index=0):
+    def plot_scheme(self, draw_list, order=ORDER_LR):
+        sum_matrix_index, mx_list = draw_list[0], draw_list[1:]
+
+        mx_list = mx_list[::-1]
+        order = ORDER_RL
+
+        if order == ORDER_LR:
+            mx_list = mx_list[::-1]
+        else:
+            sum_matrix_index = abs(sum_matrix_index - len(mx_list)) - 1
+
         # Length of list of matrices in equation should be at least 3. Two combinations and one sum
         assert len(mx_list) >= 3
         # Matrix index must be given (and it will never be 1st matrix, that's why 0 here)
@@ -395,6 +397,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # Save all coordinates of bridges in a new_bridges list
         new_bridges   = list(self.set_bridges(mx_list[0].shape[0], start_bridge))
 
+        self.progressBar.setValue(100 // len(mx_list) // 2)
+
         # Secondly, iterate over input (x) points and connect each of them with specific
         # bridge they should be connected to
         # Iterate over rows (inputs)
@@ -412,6 +416,8 @@ class MainWindow(QtWidgets.QMainWindow):
             # Create offset, space in Y axis so that next input (x) bridge will be plotted below
             start_bridge += Point(y=self.point_height_offset)
         #
+
+        self.progressBar.setValue(self.progressBar.value() + 100 // len(mx_list) // 2)
 
         # set offset for next bridge - in X axis, so that new bridge will be further
         # also, set offset for Y so that graph will be nicely stretched and centered
@@ -462,14 +468,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 if sum_matrix_index in (i, i-1): #and len(mx_list) > 3:
                     start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor * 2)#2.35)
 
-                print(new_bridges)
-
                 for index, el in ndenumerate(transpose(mx)):
                     # Add offset to the each next row
                     if index[1] == 0:
                         start_bridge.right_point.y += self.point_height_offset
                     self.link_bridge(start_bridge, new_bridges[index[1]], mx[index[1]][index[0]])
                 start_bridge = new_bridges[0]
+            # Add progress to the progressbar
+            self.progressBar.setValue(self.progressBar.value() + 100 // len(mx_list))
 
             # Adjusting height of bridge - centering
             #TODO: len of mx cant be less than 3
@@ -480,13 +486,11 @@ class MainWindow(QtWidgets.QMainWindow):
                     start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
             #
         #
-
-        # return
+        self.progressBar.setValue(100)
 
         # Adjusting height of bridge - centering
         # set offset for next bridge - in X axis, so that new bridge will be further
         # also, set offset for Y so that graph will be nicely stretched and centered
-
         start_bridge += Point(self.x_offset)
         # This gets executed when there is different number of Xes and Ys (in/out)
         # Then the last column (Ys) is moved up a little in order to be nicely centered
