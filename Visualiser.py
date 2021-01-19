@@ -29,6 +29,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sum_label = 's'
         self.input_label = 'x'
         self.out_label = 'y'
+        self.active_example = None
 
         self.font.setPixelSize(self.font_size)
 
@@ -45,6 +46,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._createMenu()
         self._createStatusBar()
         self._setCentralLayout()
+        self._createToolBar()
     #
 
     def _createMenu(self):
@@ -55,13 +57,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.menu.addAction('&Exit', self.close)
     #
 
-    # def _createToolBar(self):
-        # tools = QToolBar()
-        # Action1 = tools.addAction(Window.actions[0], self.action)
-        # Action1.setToolTip("Action tip")
+    def _createToolBar(self):
+        tools = QToolBar()
+        Action1 = tools.addAction("Example 1", self.prepare_example1)
+        self.active_example = example_1_code
+        Action1.setToolTip("Prepare data for example 1")
         # Action1.setFont(Window.font_toolbar)
-        # self.addToolBar(tools)
-    #
+        self.addToolBar(tools)
+
 
     def _createStatusBar(self):
         self._status = QStatusBar()
@@ -258,6 +261,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def export_button(self):
         print("OK 2")
 
+    def prepare_example1(self):
+        pass
+
     def _get_data_dialog(self):
         # Initial settings for dialog
         d = QDialog()
@@ -368,15 +374,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # Given set of input points m_in, output points m_out and x_s, y_s as starting coords
     def plot_scheme(self, draw_list, order=ORDER_LR):
+        # Prepare parameters to drawing
         sum_matrix_index, mx_list = draw_list[0], draw_list[1:]
 
-        mx_list = mx_list[::-1]
-        order = ORDER_RL
-
+        # If user passed in LR order, reverse the matrix list
+        # Reverse index of sum matrix
         if order == ORDER_LR:
             mx_list = mx_list[::-1]
-        else:
             sum_matrix_index = abs(sum_matrix_index - len(mx_list)) - 1
+
+        self._status.showMessage(message_processing_matrices)
 
         # Length of list of matrices in equation should be at least 3. Two combinations and one sum
         assert len(mx_list) >= 3
@@ -501,6 +508,8 @@ class MainWindow(QtWidgets.QMainWindow):
         last_bridges = list(self.set_bridges(mx_list[-1].shape[0], start_bridge, [self.out_label, LABEL_RIGHT]))
         for index, el in ndenumerate(mx_list[-1]):
             self.link_bridge(new_bridges[index[1]], last_bridges[index[0]], el)
+
+        self._status.showMessage(message_finished)
     #
 
     # For given starting bridge, draw column of bridges, number indicated by mx_len

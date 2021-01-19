@@ -82,7 +82,7 @@ In order: Y = M1*M2*M3*M4*MS*M5*M6*M7*X
 MS => Sum matrix
 M1..6 => next matrices with values for combinations
 """
-example_3_sum_i = 3
+example_3_sum_i = 4
 example_3 = [
     example_3_sum_i,
     array([
