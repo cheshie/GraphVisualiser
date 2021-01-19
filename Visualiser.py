@@ -1,3 +1,5 @@
+from time import sleep
+
 from Defines.Defines import *
 from Defines.Labels import *
 
@@ -259,7 +261,7 @@ class MainWindow(QtWidgets.QMainWindow):
     #
 
     def generate_button(self):
-        main.plot_scheme(example_4[::-1], sum_matrix_index=example_4_sum_i)
+        main.plot_scheme(example_3[::-1], sum_matrix_index=example_3_sum_i)
 
     def export_button(self):
         print("OK 2")
@@ -427,6 +429,13 @@ class MainWindow(QtWidgets.QMainWindow):
             if len(mx_list) > 3:
                 if i + 1 < sum_matrix_index:
                     start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
+                # This is executed when i + 1 (means next) matrix is a sum matrix,
+                # and previous matrix is the first matrix, which is drawn at the beginning
+                # of this function. This case differs from the one when next matrix is a sum
+                # matrix and there were some previous matrices (sum is not a second matrix)
+                # it's important to make separate case for this behaviour
+                if i + 1 == sum_matrix_index and i == 0:
+                    start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
                 if i + 1 > sum_matrix_index:
                     start_bridge += Point(y=mx_list[0].shape[1] * -self.scale_factor)
             elif len(mx_list) == 3:
@@ -441,22 +450,29 @@ class MainWindow(QtWidgets.QMainWindow):
                 # Adjusting height of bridge - centering
                 # add offset to bridge in order to prepare it for next column
                 start_bridge += Point(y=mx_list[0].shape[1] * -self.scale_factor * 2)
+
             # Executed when normal matrix with combinations met
             else:
                 # Reinitialize start point - just to make all points in next column start from the same Y height
+                # TUTAJ 1 na 0
                 new_bridges = list(self.set_bridges(mx.shape[0], start_bridge + Point(x=self.x_offset)))
+
                 # For each point in the current input (or just previous) column
                 # connect it to the specific point in next column that it should be connected to
-                if sum_matrix_index in (i, i - 1) and len(mx_list) > 3:
-                    start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor * 2)
+                if sum_matrix_index in (i, i-1): #and len(mx_list) > 3:
+                    start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor * 2)#2.35)
+
+                print(new_bridges)
 
                 for index, el in ndenumerate(transpose(mx)):
+                    # Add offset to the each next row
                     if index[1] == 0:
                         start_bridge.right_point.y += self.point_height_offset
                     self.link_bridge(start_bridge, new_bridges[index[1]], mx[index[1]][index[0]])
                 start_bridge = new_bridges[0]
 
             # Adjusting height of bridge - centering
+            #TODO: len of mx cant be less than 3
             if i + 1 == sum_matrix_index:
                 if len(mx_list) > 3:
                     start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor * 2)
@@ -465,18 +481,22 @@ class MainWindow(QtWidgets.QMainWindow):
             #
         #
 
+        # return
+
         # Adjusting height of bridge - centering
         # set offset for next bridge - in X axis, so that new bridge will be further
         # also, set offset for Y so that graph will be nicely stretched and centered
+
         start_bridge += Point(self.x_offset)
-        if mx_list[-1].shape[0] != mx_list[0].shape[1]:
-            start_bridge += mx_list[0].shape[1] * -self.scale_factor
+        # This gets executed when there is different number of Xes and Ys (in/out)
+        # Then the last column (Ys) is moved up a little in order to be nicely centered
+        if mx_list[-1].shape[1] != mx_list[0].shape[0]:
+            start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
+
         # Draw last column of bridges that it will connect to
-        last_bridges = list(self.set_bridges(mx_list[-1].shape[1], start_bridge, [self.out_label, LABEL_RIGHT]))
-        #for index, el in ndenumerate(mx):
-        for pt_nr in range(mx_list[-1].shape[1]):
-            for coord in range(mx_list[-1].shape[0]):
-                self.link_bridge(new_bridges[pt_nr], last_bridges[coord], mx_list[-1][coord][pt_nr])
+        last_bridges = list(self.set_bridges(mx_list[-1].shape[0], start_bridge, [self.out_label, LABEL_RIGHT]))
+        for index, el in ndenumerate(mx_list[-1]):
+            self.link_bridge(new_bridges[index[1]], last_bridges[index[0]], el)
     #
 
     # For given starting bridge, draw column of bridges, number indicated by mx_len
