@@ -259,7 +259,7 @@ class MainWindow(QtWidgets.QMainWindow):
     #
 
     def generate_button(self):
-        main.plot_scheme(example_2[::-1], sum_matrix_index=example_2_sum_i)
+        main.plot_scheme(example_4[::-1], sum_matrix_index=example_4_sum_i)
 
     def export_button(self):
         print("OK 2")
@@ -388,24 +388,24 @@ class MainWindow(QtWidgets.QMainWindow):
         # set offset for Y so that graph will be nicely stretched and centered
         # Do it only if matrix dimensions are not equal
         if mx_list[0].shape[0] != mx_list[0].shape[1]:
-            start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
+           start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
         # Draw second column, that input (x) column will connect to
         # Save all coordinates of bridges in a new_bridges list
-        new_bridges   = list(self.set_bridges(mx_list[0].shape[1], start_bridge))
+        new_bridges   = list(self.set_bridges(mx_list[0].shape[0], start_bridge))
 
         # Secondly, iterate over input (x) points and connect each of them with specific
         # bridge they should be connected to
         # Iterate over rows (inputs)
         # Reinitialize start_bridge. This is because now the rest of bridges will be plotted and connected, one by one
         start_bridge = Bridge(Point(self.x_s, self.y_s), length=self.bridge_size)
-        for pt_nr in range(mx_list[0].shape[0]):
+        for pt_nr in range(mx_list[0].shape[1]):
             # Plot nth input (x) bridge and give it a label
             sb = self.plot_bridge(start_bridge, self.input_label, index=pt_nr)
 
             # Iterate over next column of bridges (columns)
             # Connect each input bridge which next bridge it should be connected to
-            for coord in range(mx_list[0].shape[1]):
-                self.link_bridge(sb, new_bridges[coord], mx_list[0][pt_nr][coord])
+            for coord in range(mx_list[0].shape[0]):
+                self.link_bridge(sb, new_bridges[coord], mx_list[0][coord][pt_nr])
 
             # Create offset, space in Y axis so that next input (x) bridge will be plotted below
             start_bridge += Point(y=self.point_height_offset)
@@ -447,7 +447,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 new_bridges = list(self.set_bridges(mx.shape[0], start_bridge + Point(x=self.x_offset)))
                 # For each point in the current input (or just previous) column
                 # connect it to the specific point in next column that it should be connected to
-                if sum_matrix_index in (i, i-1) and len(mx_list) > 3:
+                if sum_matrix_index in (i, i - 1) and len(mx_list) > 3:
                     start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor * 2)
 
                 for index, el in ndenumerate(transpose(mx)):
@@ -473,9 +473,10 @@ class MainWindow(QtWidgets.QMainWindow):
             start_bridge += mx_list[0].shape[1] * -self.scale_factor
         # Draw last column of bridges that it will connect to
         last_bridges = list(self.set_bridges(mx_list[-1].shape[1], start_bridge, [self.out_label, LABEL_RIGHT]))
-        for pt_nr in range(mx_list[-1].shape[0]):
-            for coord in range(mx_list[-1].shape[1]):
-                self.link_bridge(new_bridges[pt_nr], last_bridges[coord], mx_list[-1][pt_nr][coord])
+        #for index, el in ndenumerate(mx):
+        for pt_nr in range(mx_list[-1].shape[1]):
+            for coord in range(mx_list[-1].shape[0]):
+                self.link_bridge(new_bridges[pt_nr], last_bridges[coord], mx_list[-1][coord][pt_nr])
     #
 
     # For given starting bridge, draw column of bridges, number indicated by mx_len
