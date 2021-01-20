@@ -88,6 +88,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # params group defines view of all parameters to plotting graph
         def params_group():
             widgets_view = []
+            widgets_options = []
+            widgets_fonts = []
             # Frame that will hold horizontal buttons layout
             button_frame = QFrame()
             # Create horizontal layout
@@ -114,18 +116,28 @@ class MainWindow(QtWidgets.QMainWindow):
             col_offset.setValue(self.x_offset)
             col_offset_lbl = QLabel(column_offset_lbl)
             col_offset_lbl.setToolTip(column_offset_tooltip)
+
+            widgets_options.append(col_offset)
+
             # Parameter 2 - Vertical offset
             ver_offset = QSpinBox()
             ver_offset.setRange(-1000, -1)
             ver_offset.setValue(self.point_height_offset)
             ver_offset_lbl = QLabel(vertical_offset_lbl)
             ver_offset_lbl.setToolTip(vertical_offset_tooltip)
+
+            widgets_options.append(ver_offset)
+
             # Parameter 3 - Bridge size
             br_size = QSpinBox()
             br_size.setRange(1, 1000)
             br_size.setValue(self.bridge_size)
             br_size_lbl = QLabel(bridge_size_lbl)
             br_size_lbl.setToolTip(bridge_size_tooltip)
+
+            widgets_options.append(br_size)
+
+
             # TODO: grid enable, disable
 
             # Third section - fonts and labels on graph
@@ -142,13 +154,19 @@ class MainWindow(QtWidgets.QMainWindow):
             x_text.setFixedWidth(20)
             x_text.setText(self.input_label)
 
+            widgets_fonts.append(x_text)
+
             y_text = QLineEdit()
             y_text.setFixedWidth(20)
             y_text.setText(self.out_label)
 
+            widgets_fonts.append(y_text)
+
             sum_text = QLineEdit()
             sum_text.setFixedWidth(20)
             sum_text.setText(self.sum_label)
+
+            widgets_fonts.append(sum_text)
 
             labels_layout.addWidget(X_lbl)
             labels_layout.addWidget(x_text)
@@ -163,6 +181,8 @@ class MainWindow(QtWidgets.QMainWindow):
             font_size.setValue(self.font_size)
             font_size_lbl = QLabel(font_size_label)
             font_size_lbl.setToolTip(font_size_tooltip)
+
+            widgets_fonts.append(font_size)
 
             # Fourth section - buttons to generate and save graphs
             # Label
@@ -205,7 +225,9 @@ class MainWindow(QtWidgets.QMainWindow):
             # Append frame to widgets
             widgets_view.append(button_frame)
 
-            return widgets_view
+
+
+            return widgets_view, widgets_options, widgets_fonts
         #
 
         # graphview group defines plotting window view and progress bar
@@ -243,7 +265,7 @@ class MainWindow(QtWidgets.QMainWindow):
                   gt(box=QGroupBox("Graph View"), layout=QVBoxLayout(), widgets=[], pos=(0, 1)))
 
         # define lists of widgets (groups)
-        group_params = params_group()
+        group_params, self.param_refs, self.fonts_refs = params_group()
         group_graph, graph_refs = graphview_group()
 
         # assign defined lists of widgets
@@ -265,6 +287,17 @@ class MainWindow(QtWidgets.QMainWindow):
     #
 
     def generate_button(self):
+        #print(self.param_refs[0].value())
+        self.x_offset = self.param_refs[0].value()
+        #print(self.param_refs[1].value())
+        self.point_height_offset = self.param_refs[1].value()
+        self.bridge_size = self.param_refs[2].value()
+
+        self.input_label = self.fonts_refs[0].text()
+        self.out_label = self.fonts_refs[1].text()
+        self.sum_label = self.fonts_refs[2].text()
+        self.font_size = self.fonts_refs[3].value()
+
         main.plot_scheme(example_4, order=ORDER_LR)
 
     def export_button(self):
