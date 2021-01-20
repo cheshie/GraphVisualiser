@@ -1,4 +1,10 @@
-from numpy import array
+from Defines.Defines import *
+
+# TODO: Why it recognizes imports from Defines, but not objects defined in that file??
+# Define order in which the IN matrices will be passed
+# Example: Y = A * B * SUM * D (equation), list of matrices: [A, B, S, D], ORDER: ORDER_LR
+ORDER_LR = 1
+ORDER_RL = 0
 
 example_1_sum_i = 1
 example_1_eq = "Y = M0*S*M1"
@@ -234,6 +240,9 @@ example_4 = [
        [0, 0, 1]])
 ]
 
+# Define list of examples for easier indexing
+examples = [example_1, example_2, example_3, example_4]
+examples_orders = [ORDER_LR, ORDER_LR, ORDER_LR, ORDER_LR]
 
 # Special symbols: φ  ŝ
 def get_scheme_1():

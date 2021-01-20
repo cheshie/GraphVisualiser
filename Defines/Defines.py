@@ -3,10 +3,10 @@ from random import randint, random
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QToolBar, QStatusBar, QGridLayout, QWidget, QGroupBox, QVBoxLayout, QFrame, QPushButton, \
-    QLabel, QHBoxLayout, QProgressBar, QRadioButton, QButtonGroup, QTextEdit
+    QLabel, QHBoxLayout, QProgressBar, QRadioButton, QButtonGroup, QTextEdit, QCheckBox
 from qdarkstyle import load_stylesheet
 import sys
-from numpy import array, zeros, ndenumerate, transpose
+from numpy import array, zeros, ndenumerate, transpose, savetxt, int as int_np
 from Defines.Items import *
 from Examples.examples import *
 import PyQt5.QtCore as pqtc

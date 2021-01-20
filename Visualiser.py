@@ -36,6 +36,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
 
+        # Input for computation
+        self.current_data = []
+        self.current_data_sum_index = None
+        self.current_data_order = None
+
         self.window_size = (1000, 600)
         self.window_pos = (800, 400)
 
@@ -72,6 +77,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def prepare_example(self, i):
         # Add reference to equation box and fill it with example string
         self.active_example = i
+        self.current_data = examples[self.active_example][1:]
+        self.current_data_sum_index = examples[self.active_example][0]
+        self.current_data_order = ORDER_LR
     #
 
 
@@ -226,8 +234,8 @@ class MainWindow(QtWidgets.QMainWindow):
             widgets_view.append(button_frame)
 
 
-
-            return widgets_view, widgets_options, widgets_fonts
+            # Comment to K_B - I need equation for preparing data window
+            return widgets_view, widgets_options, widgets_fonts, equation
         #
 
         # graphview group defines plotting window view and progress bar
@@ -265,7 +273,7 @@ class MainWindow(QtWidgets.QMainWindow):
                   gt(box=QGroupBox("Graph View"), layout=QVBoxLayout(), widgets=[], pos=(0, 1)))
 
         # define lists of widgets (groups)
-        group_params, self.param_refs, self.fonts_refs = params_group()
+        group_params, self.param_refs, self.fonts_refs, self.equation_data = params_group()
         group_graph, graph_refs = graphview_group()
 
         # assign defined lists of widgets
@@ -298,12 +306,22 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sum_label = self.fonts_refs[2].text()
         self.font_size = self.fonts_refs[3].value()
 
-        main.plot_scheme(example_4, order=ORDER_LR)
+        if self.current_data != [] and self.current_data_sum_index is not None:
+            main.plot_scheme(self.current_data, self.current_data_sum_index, order=self.current_data_order)
+        else:
+            self._status.showMessage("Must provide data!")
 
     def export_button(self):
         print("OK 2")
 
     def _get_data_dialog(self):
+        # Empty string of equation - exit
+        if self.equation_data.text() == "":
+            self._status.showMessage("No equation provided")
+            return
+
+        # TODO: broken string of equation, some error checking
+
         # Initial settings for dialog ####
         d = QDialog()
         d.setStyleSheet(load_stylesheet(qt_api='pyqt5'))
@@ -316,8 +334,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Create horizontal layout
         dialog_grid = QGridLayout()
         self.matrices_refs = []
-        example_eq_string = "Y = M1*S*M2"
-        eq_string = example_eq_string[example_eq_string.index("M1"):]
+        eq_string = self.equation_data.text()[self.equation_data.text().index("=") + 1:].rstrip(" ")
 
         if "*" not in eq_string:
             pass # warning or exception here
@@ -325,15 +342,16 @@ class MainWindow(QtWidgets.QMainWindow):
         #TODO: Check whether equation field is empty
         #TODO:
         # TODO: handle case when user provides string with another separator, or none at all
-        examples = [example_1, example_2, example_3, example_4]
-        array_of_matrices = []
-        if self.active_example is None:
-            array_of_matrices = len(eq_string.split("*"))
-        else:
-            array_of_matrices = len(examples[self.active_example][1:])
+        mx_arrlen = []
+        if self.current_data == [] and self.current_data_sum_index is None:
+            if self.active_example is None:
+                self.current_data = [array([])] * len(eq_string.split("*"))
+                self.current_data_sum_index = eq_string.split("*").index("S")
+                # TODO: SELF.CURRENT_DATA_ORDER read from a switch
 
+        mx_arrlen = len(self.current_data)
         # Fill window with name of matrix and button for each of matrices
-        for i in range(array_of_matrices):
+        for i in range(mx_arrlen):
             mx_label_text = "M"
 
             if self.active_example is None:
@@ -370,34 +388,82 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def show_data_function(self, i):
         # Initial settings for dialog ####
-        d = QDialog()
+        self.topdialog = d = QDialog()
         d.setStyleSheet(load_stylesheet(qt_api='pyqt5'))
         pos = self.pos()
         d.move(pos.x() + 100, pos.y() + 200)
-        d.setWindowTitle("Add data")
+        d.setWindowTitle("Fill matrix contents")
         d.setWindowModality(pqtc.Qt.ApplicationModal)
         #### #### #### ####
 
-        dialog_grid = QVBoxLayout()
+        dialog_grid = QGridLayout()
 
         # Dialog contents
-        matrix_contents = QTextEdit()
-        matrix_contents.setMinimumHeight(40)
-        matrix_contents.setMinimumWidth(40)
-        confirm_button = QPushButton()
+        self.curr_matrix_contents = QTextEdit()
+        self.curr_matrix_index = i
+        self.curr_matrix_contents.setMinimumHeight(40)
+        self.curr_matrix_contents.setMinimumWidth(40)
+        confirm_button = QPushButton("Confirm")
+        confirm_button.clicked.connect(self.confirm_adding_data)
 
-        # Fill matrices with examples
-        if self.active_example is not None:
-            examples = [example_1, example_2, example_3, example_4]
-            matrix_contents.append(str(examples[self.active_example][i + 1]))
+        self.hide_checkbox = QCheckBox("Hide zeroes")
+        self.hide_checkbox.clicked.connect(self.hide_zeroes)
 
+        gen_mx_label = QLabel("Generate matrix")
+        gen_mx_spx_y_lbl = QLabel("Rows")
+        self.gen_mx_spx_y = QSpinBox()
+        self.gen_mx_spx_y.setRange(1, 1000)
+        self.gen_mx_spx_y.setValue(4)
+        gen_mx_spx_x_lbl = QLabel("Cols")
+        self.gen_mx_spx_x = QSpinBox()
+        self.gen_mx_spx_x.setRange(1, 1000)
+        self.gen_mx_spx_x.setValue(4)
+        gen_mx_confirm = QPushButton("Generate")
+        gen_mx_confirm.clicked.connect(self.mx_generator)
+
+        # Fill data from appropriate matrix
+        for row in self.current_data[i]:
+            self.curr_matrix_contents.append(" ".join(str(n) if n < 0 else " " + str(n) for n in row))
+            print()
 
         # Add widgets and close dialog
-        dialog_grid.addWidget(matrix_contents)
-        dialog_grid.addWidget(confirm_button)
+        dialog_grid.addWidget(self.curr_matrix_contents, *(0,0))
+        dialog_grid.addWidget(confirm_button, *(1, 0))
+        dialog_grid.addWidget(self.hide_checkbox, *(1, 1))
+        dialog_grid.addWidget(gen_mx_label, *(2, 0))
+        dialog_grid.addWidget(gen_mx_spx_y_lbl, *(2, 1))
+        dialog_grid.addWidget(self.gen_mx_spx_y, *(2, 2))
+        dialog_grid.addWidget(gen_mx_spx_x_lbl, *(2, 3))
+        dialog_grid.addWidget(self.gen_mx_spx_x, *(2, 4))
+        dialog_grid.addWidget(gen_mx_confirm, *(2, 5))
         d.setLayout(dialog_grid)
         d.exec_()
     #
+    # Generate matrix of zeroes
+    def mx_generator(self):
+        self.curr_matrix_contents.clear()
+        for row in zeros((self.gen_mx_spx_y.value(), self.gen_mx_spx_x.value()), dtype=int_np):
+            self.curr_matrix_contents.append(" ".join(str(n) if n < 0 else " "+str(n) for n in row))
+    #
+    # Convert text matrix stored in Fill window from text to array
+    def confirm_adding_data(self):
+        mx = []
+        for row in self.curr_matrix_contents.toPlainText().split('\n'):
+            mx += [[int(val) for val in row.split()]]
+
+        self.current_data[self.curr_matrix_index] = array(mx)
+        self.topdialog.close()
+    #
+    def hide_zeroes(self):
+        if self.hide_checkbox.isChecked():
+            temp = self.curr_matrix_contents.toPlainText().replace("0", ".")
+            self.curr_matrix_contents.clear()
+            self.curr_matrix_contents.append(temp)
+        else:
+            temp = self.curr_matrix_contents.toPlainText().replace(".", "0")
+            self.curr_matrix_contents.clear()
+            self.curr_matrix_contents.append(temp)
+
 
     # in case there is junction, bridge must be plotted to extend point's arm
     # x, y is just point coords
@@ -488,9 +554,9 @@ class MainWindow(QtWidgets.QMainWindow):
     #
 
     # Given set of input points m_in, output points m_out and x_s, y_s as starting coords
-    def plot_scheme(self, draw_list, order=ORDER_LR):
-        # Prepare parameters to drawing
-        sum_matrix_index, mx_list = draw_list[0], draw_list[1:]
+    def plot_scheme(self, mx_list, sum_matrix_index,  order=ORDER_LR):
+        # Clear data from plot canvas before drawing
+        self.graphWidget.clear()
 
         # If user passed in LR order, reverse the matrix list
         # Reverse index of sum matrix
