@@ -59,11 +59,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _createToolBar(self):
         tools = QToolBar()
-        Action1 = tools.addAction("Example 1", self.prepare_example1)
-        self.active_example = example_1_code
+        Action1 = tools.addAction("Example 1", lambda i=0: self.prepare_example(i))
+        Action2 = tools.addAction("Example 2", lambda i=1: self.prepare_example(i))
+        Action3 = tools.addAction("Example 3", lambda i=2: self.prepare_example(i))
+        Action4 = tools.addAction("Example 4", lambda i=3: self.prepare_example(i))
         Action1.setToolTip("Prepare data for example 1")
-        # Action1.setFont(Window.font_toolbar)
+        Action2.setToolTip("Prepare data for example 2")
+        Action3.setToolTip("Prepare data for example 3")
+        Action4.setToolTip("Prepare data for example 4")
         self.addToolBar(tools)
+
+    def prepare_example(self, i):
+        # Add reference to equation box and fill it with example string
+        self.active_example = i
+    #
 
 
     def _createStatusBar(self):
@@ -261,28 +270,101 @@ class MainWindow(QtWidgets.QMainWindow):
     def export_button(self):
         print("OK 2")
 
-    def prepare_example1(self):
-        pass
-
     def _get_data_dialog(self):
-        # Initial settings for dialog
+        # Initial settings for dialog ####
         d = QDialog()
         d.setStyleSheet(load_stylesheet(qt_api='pyqt5'))
         pos = self.pos()
         d.move(pos.x() + 100, pos.y() + 200)
         d.setWindowTitle("Add data")
         d.setWindowModality(pqtc.Qt.ApplicationModal)
+        #### #### #### ####
 
         # Create horizontal layout
         dialog_grid = QGridLayout()
+        self.matrices_refs = []
+        example_eq_string = "Y = M1*S*M2"
+        eq_string = example_eq_string[example_eq_string.index("M1"):]
 
-        m1 = QLabel("M1")
-        m1_button = QPushButton("Add file")
-        dialog_grid.addWidget(m1, *(0,0))
-        dialog_grid.addWidget(m1_button, *(0,1))
+        if "*" not in eq_string:
+            pass # warning or exception here
+
+        #TODO: Check whether equation field is empty
+        #TODO:
+        # TODO: handle case when user provides string with another separator, or none at all
+        examples = [example_1, example_2, example_3, example_4]
+        array_of_matrices = []
+        if self.active_example is None:
+            array_of_matrices = len(eq_string.split("*"))
+        else:
+            array_of_matrices = len(examples[self.active_example][1:])
+
+        # Fill window with name of matrix and button for each of matrices
+        for i in range(array_of_matrices):
+            mx_label_text = "M"
+
+            if self.active_example is None:
+                mx_label_text = eq_string.split("*")[i]
+
+            if self.active_example is not None:
+                #TODO: LR nad RL cases should be considered here
+                if i == examples[self.active_example][0]:
+                    mx_label_text = "S"
+
+            mx_label = QLabel(f"{mx_label_text}{i if mx_label_text == 'M' else ''}")
+            mx_button = QPushButton("Data")
+            mx_button.clicked.connect(lambda ch, i=i: self.show_data_function(i))
+            mx_choice = QButtonGroup()
+            fle_bt = QRadioButton("File")
+            fle_bt.setToolTip("Fill matrix automatically from a chosen file")
+            fil_bt = QRadioButton("Fill")
+            fil_bt.setToolTip("Fill matrix manually")
+            fil_bt.setChecked(True)
+
+            mx_choice.addButton(fle_bt)
+            mx_choice.addButton(fil_bt)
+            mx_choice.addButton(QRadioButton("File"))
+            mx_choice.addButton(QRadioButton("Fill"))
+
+            self.matrices_refs += [mx_label, mx_button, mx_choice]
+            dialog_grid.addWidget(mx_label, *(i, 0))
+            dialog_grid.addWidget(mx_button, *(i, 1))
+            dialog_grid.addWidget(fle_bt, *(i, 2))
+            dialog_grid.addWidget(fil_bt, *(i, 3))
 
         d.setLayout(dialog_grid)
         d.exec_()
+
+    def show_data_function(self, i):
+        # Initial settings for dialog ####
+        d = QDialog()
+        d.setStyleSheet(load_stylesheet(qt_api='pyqt5'))
+        pos = self.pos()
+        d.move(pos.x() + 100, pos.y() + 200)
+        d.setWindowTitle("Add data")
+        d.setWindowModality(pqtc.Qt.ApplicationModal)
+        #### #### #### ####
+
+        dialog_grid = QVBoxLayout()
+
+        # Dialog contents
+        matrix_contents = QTextEdit()
+        matrix_contents.setMinimumHeight(40)
+        matrix_contents.setMinimumWidth(40)
+        confirm_button = QPushButton()
+
+        # Fill matrices with examples
+        if self.active_example is not None:
+            examples = [example_1, example_2, example_3, example_4]
+            matrix_contents.append(str(examples[self.active_example][i + 1]))
+
+
+        # Add widgets and close dialog
+        dialog_grid.addWidget(matrix_contents)
+        dialog_grid.addWidget(confirm_button)
+        d.setLayout(dialog_grid)
+        d.exec_()
+    #
 
     # in case there is junction, bridge must be plotted to extend point's arm
     # x, y is just point coords

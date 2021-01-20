@@ -1,6 +1,7 @@
 from numpy import array
 
 example_1_sum_i = 1
+example_1_eq = "Y = M0*S*M1"
 example_1 = [
     example_1_sum_i,
     array([[-1, -1, 0, -1, -1, 0, 0, 0, 0, 1],
@@ -31,11 +32,12 @@ example_1 = [
 ]
 
 """
-In order: Y = M1*M2*M3*MS*M5*M6*X
+In order: Y = M0*M1*M2*S*M3*M4*M5
 MS => Sum matrix
 M1..6 => next matrices with values for combinations
 """
 example_2_sum_i = 3
+example_2_eq = "Y = M0*M1*M2*S*M3*M4*M5"
 example_2 = [
     example_2_sum_i,
     array([
@@ -78,11 +80,12 @@ array([[1, 0, 0, 0],
 ]
 
 """
-In order: Y = M1*M2*M3*M4*MS*M5*M6*M7*X
+In order: Y = M0*M1*M2*M3*S*M4*M5*M6*M7
 MS => Sum matrix
 M1..6 => next matrices with values for combinations
 """
 example_3_sum_i = 4
+example_3_eq = "Y = M0*M1*M2*M3*S*M4*M5*M6*M7"
 example_3 = [
     example_3_sum_i,
     array([
@@ -209,6 +212,7 @@ example_3 = [
 ]
 
 example_4_sum_i = 2
+example_4_eq = "Y = M0*M1*S*M3"
 example_4 = [
     example_4_sum_i,
     array([[1, 0, 0, 0, 0],
