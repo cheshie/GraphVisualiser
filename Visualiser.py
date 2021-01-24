@@ -206,6 +206,12 @@ class MainWindow(QtWidgets.QMainWindow):
             export_button.clicked.connect(self.export_button)
             export_button.setToolTip(export_label_tooltip)
 
+            auto_stretch_lbl = QLabel("Stretch:")
+            auto_stretch = QCheckBox("Stretch columns")
+            auto_stretch.setToolTip("Automatically centralizes plotted columns in Y-axis")
+            auto_stretch.setChecked(True)
+
+
             # First section
             central_grid.addWidget(eq_label, *(0, 0))
             central_grid.addWidget(equation, *(1, 0))
@@ -225,8 +231,10 @@ class MainWindow(QtWidgets.QMainWindow):
             central_grid.addWidget(font_size, *(8, 1))
             # Fourth section
             central_grid.addWidget(generate_section, *(9, 0))
-            central_grid.addWidget(generate_button, *(10, 0))
-            central_grid.addWidget(export_button, *(10, 1))
+            central_grid.addWidget(auto_stretch_lbl, *(10, 0))
+            central_grid.addWidget(auto_stretch, *(10, 1))
+            central_grid.addWidget(generate_button, *(11, 0))
+            central_grid.addWidget(export_button, *(11, 1))
 
             # Add layout to frame
             button_frame.setLayout(central_grid)
@@ -235,7 +243,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
             # Comment to K_B - I need equation for preparing data window
-            return widgets_view, widgets_options, widgets_fonts, equation
+            return widgets_view, widgets_options, widgets_fonts, equation, auto_stretch
         #
 
         # graphview group defines plotting window view and progress bar
@@ -273,7 +281,7 @@ class MainWindow(QtWidgets.QMainWindow):
                   gt(box=QGroupBox("Graph View"), layout=QVBoxLayout(), widgets=[], pos=(0, 1)))
 
         # define lists of widgets (groups)
-        group_params, self.param_refs, self.fonts_refs, self.equation_data = params_group()
+        group_params, self.param_refs, self.fonts_refs, self.equation_data, self.auto_stretch = params_group()
         group_graph, graph_refs = graphview_group()
 
         # assign defined lists of widgets
@@ -447,8 +455,10 @@ class MainWindow(QtWidgets.QMainWindow):
     #
     # Convert text matrix stored in Fill window from text to array
     def confirm_adding_data(self):
+        contents = self.curr_matrix_contents.toPlainText().replace(".", "0")
+
         mx = []
-        for row in self.curr_matrix_contents.toPlainText().split('\n'):
+        for row in contents.split('\n'):
             mx += [[int(val) for val in row.split()]]
 
         self.current_data[self.curr_matrix_index] = array(mx)
@@ -579,8 +589,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # Adjusting height of bridge - centering
         # set offset for Y so that graph will be nicely stretched and centered
         # Do it only if matrix dimensions are not equal
-        if mx_list[0].shape[0] != mx_list[0].shape[1]:
-           start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
+        if self.auto_stretch.isChecked():
+            if mx_list[0].shape[0] != mx_list[0].shape[1]:
+               start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
         # Draw second column, that input (x) column will connect to
         # Save all coordinates of bridges in a new_bridges list
         new_bridges   = list(self.set_bridges(mx_list[0].shape[0], start_bridge))
@@ -620,20 +631,21 @@ class MainWindow(QtWidgets.QMainWindow):
             # Adjust height of next columns of bridges so that entire graph will
             # be nicely centered
             # (and do it only for equations that have more than 3 matrices)
-            if len(mx_list) > 3:
-                if i + 1 < sum_matrix_index:
+            if self.auto_stretch.isChecked():
+                if len(mx_list) > 3:
+                    if i + 1 < sum_matrix_index:
+                        start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
+                    # This is executed when i + 1 (means next) matrix is a sum matrix,
+                    # and previous matrix is the first matrix, which is drawn at the beginning
+                    # of this function. This case differs from the one when next matrix is a sum
+                    # matrix and there were some previous matrices (sum is not a second matrix)
+                    # it's important to make separate case for this behaviour
+                    if i + 1 == sum_matrix_index and i == 0:
+                        start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
+                    if i + 1 > sum_matrix_index:
+                        start_bridge += Point(y=mx_list[0].shape[1] * -self.scale_factor)
+                elif len(mx_list) == 3:
                     start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
-                # This is executed when i + 1 (means next) matrix is a sum matrix,
-                # and previous matrix is the first matrix, which is drawn at the beginning
-                # of this function. This case differs from the one when next matrix is a sum
-                # matrix and there were some previous matrices (sum is not a second matrix)
-                # it's important to make separate case for this behaviour
-                if i + 1 == sum_matrix_index and i == 0:
-                    start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
-                if i + 1 > sum_matrix_index:
-                    start_bridge += Point(y=mx_list[0].shape[1] * -self.scale_factor)
-            elif len(mx_list) == 3:
-                start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
 
             # Executed when sum matrix met
             if i + 1 == sum_matrix_index:
@@ -643,7 +655,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 start_bridge = new_bridges[0]
                 # Adjusting height of bridge - centering
                 # add offset to bridge in order to prepare it for next column
-                start_bridge += Point(y=mx_list[0].shape[1] * -self.scale_factor * 2)
+                if self.auto_stretch.isChecked():
+                    start_bridge += Point(y=mx_list[0].shape[1] * -self.scale_factor * 2)
 
             # Executed when normal matrix with combinations met
             else:
@@ -653,12 +666,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 # For each point in the current input (or just previous) column
                 # connect it to the specific point in next column that it should be connected to
-                if sum_matrix_index in (i, i-1): #and len(mx_list) > 3:
-                    start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor * 2)#2.35)
+                if self.auto_stretch.isChecked():
+                    if sum_matrix_index in (i, i-1): #and len(mx_list) > 3:
+                        start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor * 2)#2.35)
 
                 for index, el in ndenumerate(transpose(mx)):
                     # Add offset to the each next row
-                    if index[1] == 0:
+                    if index[1] == 0 and index[0] > 0:
                         start_bridge.right_point.y += self.point_height_offset
                     self.link_bridge(start_bridge, new_bridges[index[1]], mx[index[1]][index[0]])
                 start_bridge = new_bridges[0]
@@ -667,11 +681,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # Adjusting height of bridge - centering
             #TODO: len of mx cant be less than 3
-            if i + 1 == sum_matrix_index:
-                if len(mx_list) > 3:
-                    start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor * 2)
-                if len(mx_list) == 3:
-                    start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
+            if self.auto_stretch.isChecked():
+                if i + 1 == sum_matrix_index:
+                    if len(mx_list) > 3:
+                        start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor * 2)
+                    if len(mx_list) == 3:
+                        start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
             #
         #
         self.progressBar.setValue(100)
@@ -682,8 +697,9 @@ class MainWindow(QtWidgets.QMainWindow):
         start_bridge += Point(self.x_offset)
         # This gets executed when there is different number of Xes and Ys (in/out)
         # Then the last column (Ys) is moved up a little in order to be nicely centered
-        if mx_list[-1].shape[1] != mx_list[0].shape[0]:
-            start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
+        if self.auto_stretch.isChecked():
+            if mx_list[-1].shape[1] != mx_list[0].shape[0]:
+                start_bridge += Point(y=mx_list[0].shape[1] * self.scale_factor)
 
         # Draw last column of bridges that it will connect to
         last_bridges = list(self.set_bridges(mx_list[-1].shape[0], start_bridge, [self.out_label, LABEL_RIGHT]))
