@@ -243,6 +243,7 @@ example_4 = [
 # Define list of examples for easier indexing
 examples = [example_1, example_2, example_3, example_4]
 examples_orders = [ORDER_LR, ORDER_LR, ORDER_LR, ORDER_LR]
+examples_eqs = [example_1_eq, example_2_eq, example_3_eq, example_4_eq]
 
 # Special symbols: φ  ŝ
 def get_scheme_1():

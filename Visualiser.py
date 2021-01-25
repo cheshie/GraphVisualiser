@@ -1,3 +1,4 @@
+from re import match, search, split
 from time import sleep
 
 from Defines.Defines import *
@@ -41,6 +42,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.current_data_sum_index = None
         self.current_data_order = None
 
+        # Used for handling Fill & File radio groups in Data window
+        self.radio_button_data = []
+
         self.window_size = (1000, 600)
         self.window_pos = (800, 400)
 
@@ -68,18 +72,28 @@ class MainWindow(QtWidgets.QMainWindow):
         Action2 = tools.addAction("Example 2", lambda i=1: self.prepare_example(i))
         Action3 = tools.addAction("Example 3", lambda i=2: self.prepare_example(i))
         Action4 = tools.addAction("Example 4", lambda i=3: self.prepare_example(i))
+        Action5 = tools.addAction("Clear example", lambda i=4: self.prepare_example(i))
         Action1.setToolTip("Prepare data for example 1")
         Action2.setToolTip("Prepare data for example 2")
         Action3.setToolTip("Prepare data for example 3")
         Action4.setToolTip("Prepare data for example 4")
+        Action5.setToolTip("Clear active example and all data")
         self.addToolBar(tools)
 
     def prepare_example(self, i):
-        # Add reference to equation box and fill it with example string
-        self.active_example = i
-        self.current_data = examples[self.active_example][1:]
-        self.current_data_sum_index = examples[self.active_example][0]
-        self.current_data_order = ORDER_LR
+        if i == 4:
+            self.active_example = None
+            self.current_data = []
+            self.current_data_sum_index = None
+            self.equation_data.clear()
+        else:
+            # Add reference to equation box and fill it with example string
+            self.active_example = i
+            self.current_data = examples[self.active_example][1:]
+            self.current_data_sum_index = examples[self.active_example][0]
+            self.current_data_order = ORDER_LR
+            # Set currently displayed equation in equation placeholder
+            self.equation_data.setText(examples_eqs[self.active_example])
     #
 
 
@@ -144,7 +158,6 @@ class MainWindow(QtWidgets.QMainWindow):
             br_size_lbl.setToolTip(bridge_size_tooltip)
 
             widgets_options.append(br_size)
-
 
             # TODO: grid enable, disable
 
@@ -211,6 +224,11 @@ class MainWindow(QtWidgets.QMainWindow):
             auto_stretch.setToolTip("Automatically centralizes plotted columns in Y-axis")
             auto_stretch.setChecked(True)
 
+            show_grid = QCheckBox("Show grid")
+            #TODO: allow some customizing (e.g. transparency) of the grid?
+            show_grid.setToolTip("Shows Y and X axes and the grid")
+            show_grid.setChecked(False)
+
 
             # First section
             central_grid.addWidget(eq_label, *(0, 0))
@@ -233,8 +251,9 @@ class MainWindow(QtWidgets.QMainWindow):
             central_grid.addWidget(generate_section, *(9, 0))
             central_grid.addWidget(auto_stretch_lbl, *(10, 0))
             central_grid.addWidget(auto_stretch, *(10, 1))
-            central_grid.addWidget(generate_button, *(11, 0))
-            central_grid.addWidget(export_button, *(11, 1))
+            central_grid.addWidget(show_grid, *(11, 1))
+            central_grid.addWidget(generate_button, *(12, 0))
+            central_grid.addWidget(export_button, *(12, 1))
 
             # Add layout to frame
             button_frame.setLayout(central_grid)
@@ -328,7 +347,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self._status.showMessage("No equation provided")
             return
 
-        # TODO: broken string of equation, some error checking
+        # TODO KB: S matrix is called "Sum matrix", or something else?
+        if "S" not in self.equation_data.text():
+            self._status.showMessage("Sum matrix not present in equation")
+            return
 
         # Initial settings for dialog ####
         d = QDialog()
@@ -342,35 +364,20 @@ class MainWindow(QtWidgets.QMainWindow):
         # Create horizontal layout
         dialog_grid = QGridLayout()
         self.matrices_refs = []
-        eq_string = self.equation_data.text()[self.equation_data.text().index("=") + 1:].rstrip(" ")
 
-        if "*" not in eq_string:
-            pass # warning or exception here
+        if self.active_example is None:
+            matrices = self.equation_data.text()
+        else:
+            matrices = examples_eqs[self.active_example]
 
-        #TODO: Check whether equation field is empty
-        #TODO:
-        # TODO: handle case when user provides string with another separator, or none at all
-        mx_arrlen = []
-        if self.current_data == [] and self.current_data_sum_index is None:
-            if self.active_example is None:
-                self.current_data = [array([])] * len(eq_string.split("*"))
-                self.current_data_sum_index = eq_string.split("*").index("S")
-                # TODO: SELF.CURRENT_DATA_ORDER read from a switch
+        # # # Catching all matrices in regex
+        match_string = r"[=*\s]+"
+        # 1: <= we skip part before = sign: Y = M1 * M2 (...)
+        m = split(match_string, matrices)[1:]
 
-        mx_arrlen = len(self.current_data)
         # Fill window with name of matrix and button for each of matrices
-        for i in range(mx_arrlen):
-            mx_label_text = "M"
-
-            if self.active_example is None:
-                mx_label_text = eq_string.split("*")[i]
-
-            if self.active_example is not None:
-                #TODO: LR nad RL cases should be considered here
-                if i == examples[self.active_example][0]:
-                    mx_label_text = "S"
-
-            mx_label = QLabel(f"{mx_label_text}{i if mx_label_text == 'M' else ''}")
+        for i,mx_name in enumerate(m):
+            mx_label = QLabel(f"{mx_name}")
             mx_button = QPushButton("Data")
             mx_button.clicked.connect(lambda ch, i=i: self.show_data_function(i))
             mx_choice = QButtonGroup()
@@ -382,10 +389,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
             mx_choice.addButton(fle_bt)
             mx_choice.addButton(fil_bt)
-            mx_choice.addButton(QRadioButton("File"))
-            mx_choice.addButton(QRadioButton("Fill"))
 
             self.matrices_refs += [mx_label, mx_button, mx_choice]
+            self.radio_button_data += [mx_choice]
             dialog_grid.addWidget(mx_label, *(i, 0))
             dialog_grid.addWidget(mx_button, *(i, 1))
             dialog_grid.addWidget(fle_bt, *(i, 2))
@@ -395,6 +401,11 @@ class MainWindow(QtWidgets.QMainWindow):
         d.exec_()
 
     def show_data_function(self, i):
+        # Handle case when user wants to add data from file
+        if self.radio_button_data[i].checkedButton().text() == "File":
+            self.openFileNameDialog()
+            return
+
         # Initial settings for dialog ####
         self.topdialog = d = QDialog()
         d.setStyleSheet(load_stylesheet(qt_api='pyqt5'))
@@ -474,6 +485,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.curr_matrix_contents.clear()
             self.curr_matrix_contents.append(temp)
 
+    def openFileNameDialog(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "",
+                                                  "All Files (*);;Text files (*.txt)", options=options)
+        if fileName:
+            print(fileName)
 
     # in case there is junction, bridge must be plotted to extend point's arm
     # x, y is just point coords
