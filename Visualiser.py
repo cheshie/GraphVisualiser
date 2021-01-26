@@ -64,9 +64,6 @@ class MainWindow(QtWidgets.QMainWindow):
         reset_data_action = self.menu.addAction("Clear example", lambda i=4: self.prepare_example(i))
         reset_data_action.setToolTip("Clear active example and all data")
 
-        # Change theme - dark and light
-        self.menuBar().addMenu("&Theme")
-
         # Tools menu - preferences and examples
         tools = self.menuBar().addMenu("&Tools")
         tools_examples = tools.addMenu("&Examples")
@@ -227,10 +224,10 @@ class MainWindow(QtWidgets.QMainWindow):
             generate_button.clicked.connect(self.generate_button)
             generate_button.setToolTip(generate_label_tooltip)
             # Button to export results to a file
-            export_button = QPushButton(export_label)
-            export_button.setFixedWidth(30)
-            export_button.clicked.connect(self.export_button)
-            export_button.setToolTip(export_label_tooltip)
+            print_options = QComboBox()
+            for option in options_print:
+                print_options.addItem(option)
+            print_options.setToolTip(print_options_tooltip)
 
             auto_stretch_lbl = QLabel("Stretch:")
             auto_stretch = QCheckBox("Stretch columns")
@@ -266,7 +263,7 @@ class MainWindow(QtWidgets.QMainWindow):
             central_grid.addWidget(auto_stretch, *(10, 1))
             central_grid.addWidget(show_grid, *(11, 1))
             central_grid.addWidget(generate_button, *(12, 0))
-            central_grid.addWidget(export_button, *(12, 1))
+            central_grid.addWidget(print_options, *(12, 1))
 
             # Add layout to frame
             button_frame.setLayout(central_grid)
@@ -275,7 +272,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
             # Comment to K_B - I need equation for preparing data window
-            return widgets_view, widgets_options, widgets_fonts, equation, auto_stretch
+            return widgets_view, widgets_options, widgets_fonts, equation, auto_stretch, print_options
         #
 
         # graphview group defines plotting window view and progress bar
@@ -313,7 +310,8 @@ class MainWindow(QtWidgets.QMainWindow):
                   gt(box=QGroupBox("Graph View"), layout=QVBoxLayout(), widgets=[], pos=(0, 1)))
 
         # define lists of widgets (groups)
-        group_params, self.param_refs, self.fonts_refs, self.equation_data, self.auto_stretch = params_group()
+        group_params, self.param_refs, self.fonts_refs,\
+        self.equation_data, self.auto_stretch, self.print_options = params_group()
         group_graph, graph_refs = graphview_group()
 
         # assign defined lists of widgets

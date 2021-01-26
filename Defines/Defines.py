@@ -3,7 +3,8 @@ from random import randint, random
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QToolBar, QStatusBar, QGridLayout, QWidget, QGroupBox, QVBoxLayout, QFrame, QPushButton, \
-    QLabel, QHBoxLayout, QProgressBar, QRadioButton, QButtonGroup, QTextEdit, QCheckBox, QFileDialog, QFrame, QSizePolicy
+    QLabel, QHBoxLayout, QProgressBar, QRadioButton, QButtonGroup, QTextEdit, QCheckBox, QFileDialog, QFrame,\
+    QSizePolicy, QComboBox
 from qdarkstyle import load_stylesheet
 import sys
 from numpy import array, zeros, ndenumerate, transpose, savetxt, int as int_np
@@ -24,6 +25,8 @@ BRIDGE_RIGHT = 1
 # Example: Y = A * B * SUM * D (equation), list of matrices: [A, B, S, D], ORDER: ORDER_LR
 ORDER_LR = 1
 ORDER_RL = 0
+
+options_print = ["Default Window", "External - A4"]
 
 class Point:
     def __init__(self, x=0, y=0):

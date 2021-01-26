@@ -29,3 +29,5 @@ message_finished = "Processing done."
 
 example_1_id = 0
 
+print_options_tooltip = "Set either default window or external window of size A4"
+
