@@ -96,6 +96,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.equation_data.setText(examples_eqs[self.active_example])
     #
 
+    # Invalidate example when user edits equation data
+    def invalidate_example(self):
+        self.active_example = None
+    #
 
     def _createStatusBar(self):
         self._status = QStatusBar()
@@ -316,15 +320,17 @@ class MainWindow(QtWidgets.QMainWindow):
             g.box.setLayout(g.layout)
             grid.addWidget(g.box, *g.pos)
 
+        # Change examples to non-active if user edits equation data
+        self.equation_data.textEdited.connect(self.invalidate_example)
+
         # Set layouts
         centralWidget.setLayout(grid)
         self.setCentralWidget(centralWidget)
     #
 
     def generate_button(self):
-        #print(self.param_refs[0].value())
+        # Parameters setting
         self.x_offset = self.param_refs[0].value()
-        #print(self.param_refs[1].value())
         self.point_height_offset = self.param_refs[1].value()
         self.bridge_size = self.param_refs[2].value()
 
@@ -332,9 +338,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.out_label = self.fonts_refs[1].text()
         self.sum_label = self.fonts_refs[2].text()
         self.font_size = self.fonts_refs[3].value()
+        # # #
 
+        # Make sure user provided matrices to compute graph
         if self.current_data != [] and self.current_data_sum_index is not None:
-            main.plot_scheme(self.current_data, self.current_data_sum_index, order=self.current_data_order)
+            main.plot_scheme(self.current_data.copy(), self.current_data_sum_index, order=self.current_data_order)
         else:
             self._status.showMessage("Must provide data!")
 
@@ -352,19 +360,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self._status.showMessage("Sum matrix not present in equation")
             return
 
-        # Initial settings for dialog ####
-        d = QDialog()
-        d.setStyleSheet(load_stylesheet(qt_api='pyqt5'))
-        pos = self.pos()
-        d.move(pos.x() + 100, pos.y() + 200)
-        d.setWindowTitle("Add data")
-        d.setWindowModality(pqtc.Qt.ApplicationModal)
-        #### #### #### ####
-
-        # Create horizontal layout
-        dialog_grid = QGridLayout()
-        self.matrices_refs = []
-
         if self.active_example is None:
             matrices = self.equation_data.text()
         else:
@@ -374,6 +369,49 @@ class MainWindow(QtWidgets.QMainWindow):
         match_string = r"[=*\s]+"
         # 1: <= we skip part before = sign: Y = M1 * M2 (...)
         m = split(match_string, matrices)[1:]
+        # Store general object reference to be able to load multiple matrices from a file
+        self.eq_matrices = m
+
+        # Number of matrices provided by user must be at least 3
+        # i.e. Y = M0 * S * M1 (two permutation matrices and one sum)
+        if len(m) < 3:
+            self._status.showMessage("Too few matrices provided. Please provide at least 3")
+            return
+
+        # Initial settings for dialog ####
+        d = QDialog()
+        d.setStyleSheet(load_stylesheet(qt_api='pyqt5'))
+        pos = self.pos()
+        d.move(pos.x() + 100, pos.y() + 200)
+        d.setWindowTitle("Add data")
+        d.setWindowModality(pqtc.Qt.ApplicationModal)
+        # Create horizontal layout
+        dialog_grid = QGridLayout()
+        # Create separator:
+        sepline = QFrame()
+        sepline.setFrameShape(QFrame.HLine)
+        sepline.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
+        sepline.setLineWidth(3)
+        #### #### #### #### #### #### ###
+
+        # From Folder label and button
+        frr_lbl  = QLabel(f"Fetch from folder")
+        frr_btn = QPushButton("From folder")
+        frr_btn.setToolTip("Automatically fetch matrices from all files in specified directory")
+        frr_btn.clicked.connect(self.openDirNameDialog)
+        dialog_grid.addWidget(frr_lbl, *(0, 0))
+        dialog_grid.addWidget(frr_btn, *(0, 1))
+        dialog_grid.addWidget(sepline, *(1, 0))
+        # #
+
+        # Initialize data and references to window's specific options
+        self.matrices_refs = []
+        self.current_data  = [array([])] * len(m)
+        self.current_data_sum_index = m.index("S")
+        # Initialize references as lists of (nr. of matrices) length
+        # in order to be able to assign specific reference group to specific button group index
+        self.matrices_refs = [None] * len(m)
+        self.radio_button_data = [None] * len(m)
 
         # Fill window with name of matrix and button for each of matrices
         for i,mx_name in enumerate(m):
@@ -390,20 +428,21 @@ class MainWindow(QtWidgets.QMainWindow):
             mx_choice.addButton(fle_bt)
             mx_choice.addButton(fil_bt)
 
-            self.matrices_refs += [mx_label, mx_button, mx_choice]
-            self.radio_button_data += [mx_choice]
-            dialog_grid.addWidget(mx_label, *(i, 0))
-            dialog_grid.addWidget(mx_button, *(i, 1))
-            dialog_grid.addWidget(fle_bt, *(i, 2))
-            dialog_grid.addWidget(fil_bt, *(i, 3))
+            self.matrices_refs[i] = [mx_label, mx_button, mx_choice]
+            self.radio_button_data[i] = mx_choice
+            dialog_grid.addWidget(mx_label, *(i+2, 0))
+            dialog_grid.addWidget(mx_button, *(i+2, 1))
+            dialog_grid.addWidget(fle_bt, *(i+2, 2))
+            dialog_grid.addWidget(fil_bt, *(i+2, 3))
 
         d.setLayout(dialog_grid)
         d.exec_()
+    #
 
     def show_data_function(self, i):
         # Handle case when user wants to add data from file
         if self.radio_button_data[i].checkedButton().text() == "File":
-            self.openFileNameDialog()
+            self.openFileNameDialog(i)
             return
 
         # Initial settings for dialog ####
@@ -466,32 +505,55 @@ class MainWindow(QtWidgets.QMainWindow):
     #
     # Convert text matrix stored in Fill window from text to array
     def confirm_adding_data(self):
-        contents = self.curr_matrix_contents.toPlainText().replace(".", "0")
-
-        mx = []
-        for row in contents.split('\n'):
-            mx += [[int(val) for val in row.split()]]
-
-        self.current_data[self.curr_matrix_index] = array(mx)
+        self.current_data[self.curr_matrix_index] = self.parseTextMatrix(
+            self.curr_matrix_contents.toPlainText())
         self.topdialog.close()
     #
     def hide_zeroes(self):
         if self.hide_checkbox.isChecked():
             temp = self.curr_matrix_contents.toPlainText().replace("0", ".")
-            self.curr_matrix_contents.clear()
-            self.curr_matrix_contents.append(temp)
         else:
             temp = self.curr_matrix_contents.toPlainText().replace(".", "0")
-            self.curr_matrix_contents.clear()
-            self.curr_matrix_contents.append(temp)
 
-    def openFileNameDialog(self):
+        self.curr_matrix_contents.clear()
+        self.curr_matrix_contents.append(temp)
+    #
+
+    # If user requested to chose specific file
+    def openFileNameDialog(self, i):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "",
                                                   "All Files (*);;Text files (*.txt)", options=options)
-        if fileName:
-            print(fileName)
+        if fileName != "":
+            self.current_data[i] = self.parseTextMatrix(open(fileName).read())
+    #
+
+    # If user requested to choose all files in specific directory and fetch them into matrices
+    def openDirNameDialog(self):
+        dirName = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        fpaths = [path.normpath(dn) for dn in glob(path.join(dirName, r"*"))]
+        fnames = [path.basename(dn) for dn in fpaths]
+        print(fpaths)
+        for i, fp in enumerate(fpaths):
+            print("loading: ", fp, i)
+            # Check if specific matrix is present in equation
+            if fnames[i] in self.eq_matrices:
+                print("WHAT: ", self.eq_matrices.index(fnames[i]))
+                self.current_data[self.eq_matrices.index(fnames[i])] = \
+                    self.parseTextMatrix(open(fp).read())
+    #
+
+    # Parse matrix in a form i.e. 1 0 \n 1 0 \n 1 1 \n to a numpy array
+    def parseTextMatrix(self, mx_txt):
+        # Replace any . with zeroes = this happens when user changes view of
+        # matrix in Fill view so that . will replace zeroes for the easier view
+        contents = mx_txt.replace(".", "0")
+        mx = []
+        for row in contents.split('\n'):
+            mx += [[int(val) for val in row.split()]]
+
+        return array(mx)
 
     # in case there is junction, bridge must be plotted to extend point's arm
     # x, y is just point coords
@@ -588,7 +650,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # If user passed in LR order, reverse the matrix list
         # Reverse index of sum matrix
-        if order == ORDER_LR:
+        # If order == None, the default order is left-right order
+        if order == ORDER_LR or order == None:
             mx_list = mx_list[::-1]
             sum_matrix_index = abs(sum_matrix_index - len(mx_list)) - 1
 

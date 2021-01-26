@@ -3,7 +3,7 @@ from random import randint, random
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QToolBar, QStatusBar, QGridLayout, QWidget, QGroupBox, QVBoxLayout, QFrame, QPushButton, \
-    QLabel, QHBoxLayout, QProgressBar, QRadioButton, QButtonGroup, QTextEdit, QCheckBox, QFileDialog
+    QLabel, QHBoxLayout, QProgressBar, QRadioButton, QButtonGroup, QTextEdit, QCheckBox, QFileDialog, QFrame, QSizePolicy
 from qdarkstyle import load_stylesheet
 import sys
 from numpy import array, zeros, ndenumerate, transpose, savetxt, int as int_np
@@ -11,7 +11,8 @@ from Defines.Items import *
 from Examples.examples import *
 import PyQt5.QtCore as pqtc
 from PyQt5.QtWidgets import QTextBrowser, QSpinBox, QTextEdit, QLineEdit, QDialog
-
+from glob import glob
+from os import path
 
 LABEL_LEFT  = 0
 LABEL_RIGHT = 1
