@@ -59,26 +59,34 @@ class MainWindow(QtWidgets.QMainWindow):
     #
 
     def _createMenu(self):
-        self.menu = self.menuBar().addMenu("&Menu")
-        self.menuBar().addMenu("&Theme")
-        self.menuBar().addMenu("&Tools")
-        self.menuBar().addMenu("&About")
-        self.menu.addAction('&Exit', self.close)
-    #
+        # Add basic menu
+        self.menu = self.menuBar().addMenu("&File")
 
-    def _createToolBar(self):
-        tools = QToolBar()
-        Action1 = tools.addAction("Example 1", lambda i=0: self.prepare_example(i))
-        Action2 = tools.addAction("Example 2", lambda i=1: self.prepare_example(i))
-        Action3 = tools.addAction("Example 3", lambda i=2: self.prepare_example(i))
-        Action4 = tools.addAction("Example 4", lambda i=3: self.prepare_example(i))
-        Action5 = tools.addAction("Clear example", lambda i=4: self.prepare_example(i))
+        # Change theme - dark and light
+        self.menuBar().addMenu("&Theme")
+
+        # Tools menu - preferences and examples
+        tools = self.menuBar().addMenu("&Tools")
+        tools_examples = tools.addMenu("&Examples")
+        Action1 = tools_examples.addAction("Example 1", lambda i=0: self.prepare_example(i))
+        Action2 = tools_examples.addAction("Example 2", lambda i=1: self.prepare_example(i))
+        Action3 = tools_examples.addAction("Example 3", lambda i=2: self.prepare_example(i))
+        Action4 = tools_examples.addAction("Example 4", lambda i=3: self.prepare_example(i))
+        Action5 = tools_examples.addAction("Clear example", lambda i=4: self.prepare_example(i))
         Action1.setToolTip("Prepare data for example 1")
         Action2.setToolTip("Prepare data for example 2")
         Action3.setToolTip("Prepare data for example 3")
         Action4.setToolTip("Prepare data for example 4")
         Action5.setToolTip("Clear active example and all data")
-        self.addToolBar(tools)
+
+        self.menuBar().addMenu("&About")
+        self.menu.addAction('&Exit', self.close)
+    #
+
+    def _createToolBar(self):
+        pass
+        # tools = QToolBar()
+        # self.addToolBar(tools)
 
     def prepare_example(self, i):
         if i == 4:
