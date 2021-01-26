@@ -61,6 +61,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def _createMenu(self):
         # Add basic menu
         self.menu = self.menuBar().addMenu("&File")
+        reset_data_action = self.menu.addAction("Clear example", lambda i=4: self.prepare_example(i))
+        reset_data_action.setToolTip("Clear active example and all data")
 
         # Change theme - dark and light
         self.menuBar().addMenu("&Theme")
@@ -72,12 +74,11 @@ class MainWindow(QtWidgets.QMainWindow):
         Action2 = tools_examples.addAction("Example 2", lambda i=1: self.prepare_example(i))
         Action3 = tools_examples.addAction("Example 3", lambda i=2: self.prepare_example(i))
         Action4 = tools_examples.addAction("Example 4", lambda i=3: self.prepare_example(i))
-        Action5 = tools_examples.addAction("Clear example", lambda i=4: self.prepare_example(i))
+
         Action1.setToolTip("Prepare data for example 1")
         Action2.setToolTip("Prepare data for example 2")
         Action3.setToolTip("Prepare data for example 3")
         Action4.setToolTip("Prepare data for example 4")
-        Action5.setToolTip("Clear active example and all data")
 
         self.menuBar().addMenu("&About")
         self.menu.addAction('&Exit', self.close)
@@ -446,6 +447,16 @@ class MainWindow(QtWidgets.QMainWindow):
             dialog_grid.addWidget(fle_bt, *(i+2, 2))
             dialog_grid.addWidget(fil_bt, *(i+2, 3))
 
+        # Close data dialog
+        def closeDataWindow(handle):
+            handle.close()
+
+        # Add confirm button to close the dialog
+        conf_bt = QPushButton("Confirm")
+        conf_bt.clicked.connect(lambda: closeDataWindow(d))
+        dialog_grid.addWidget(conf_bt)
+
+        # Start layout
         d.setLayout(dialog_grid)
         d.exec_()
     #
@@ -493,7 +504,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Fill data from appropriate matrix
         for row in self.current_data[i]:
             self.curr_matrix_contents.append(" ".join(str(n) if n < 0 else " " + str(n) for n in row))
-            print()
 
         # Add widgets and close dialog
         dialog_grid.addWidget(self.curr_matrix_contents, *(0,0))
@@ -543,7 +553,9 @@ class MainWindow(QtWidgets.QMainWindow):
     # If user requested to choose all files in specific directory and fetch them into matrices
     def openDirNameDialog(self):
         # Get all files and filenames from directory
-        dirName = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        dirName = str(QFileDialog.getExistingDirectory(self, "Select Directory", options=options))
         fpaths = [path.normpath(dn) for dn in glob(path.join(dirName, r"*"))]
         fnames = [path.basename(dn) for dn in fpaths]
 
