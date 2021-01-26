@@ -350,7 +350,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Make sure user provided matrices to compute graph
         if self.current_data != [] and self.current_data_sum_index is not None:
-            main.plot_scheme(self.current_data.copy(), self.current_data_sum_index, order=self.current_data_order)
+            if len(self.current_data) < 3:
+                self._status.showMessage("Must provide at least 3 matrices!")
+            else:
+                main.plot_scheme(self.current_data.copy(), self.current_data_sum_index, order=self.current_data_order)
         else:
             self._status.showMessage("Must provide data!")
 
@@ -403,7 +406,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #### #### #### #### #### #### ###
 
         # From Folder label and button
-        frr_lbl  = QLabel(f"Fetch from folder")
+        frr_lbl  = QLabel(f"Fetch from folder: ")
         frr_btn = QPushButton("From folder")
         frr_btn.setToolTip("Automatically fetch matrices from all files in specified directory")
         frr_btn.clicked.connect(self.openDirNameDialog)
@@ -539,17 +542,24 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # If user requested to choose all files in specific directory and fetch them into matrices
     def openDirNameDialog(self):
+        # Get all files and filenames from directory
         dirName = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
         fpaths = [path.normpath(dn) for dn in glob(path.join(dirName, r"*"))]
         fnames = [path.basename(dn) for dn in fpaths]
-        print(fpaths)
-        for i, fp in enumerate(fpaths):
-            print("loading: ", fp, i)
-            # Check if specific matrix is present in equation
-            if fnames[i] in self.eq_matrices:
-                print("WHAT: ", self.eq_matrices.index(fnames[i]))
+
+        all_matrices_filled = True
+        for fn in fnames:
+            if fn not in self.eq_matrices:
+                all_matrices_filled = False
+
+        if all_matrices_filled and len(fnames) == len(self.eq_matrices):
+            # for each filename add it to current_data array at specific place
+            for i, fp in enumerate(fpaths):
+                # Check if specific matrix is present in equation
                 self.current_data[self.eq_matrices.index(fnames[i])] = \
                     self.parseTextMatrix(open(fp).read())
+        else:
+            self._status.showMessage("Not enough matrices provided in specified folder. Check equation and filenames in directory")
     #
 
     # Parse matrix in a form i.e. 1 0 \n 1 0 \n 1 1 \n to a numpy array
