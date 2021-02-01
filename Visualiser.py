@@ -415,9 +415,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # #
 
         # Initialize data and references to window's specific options
-        self.matrices_refs = []
-        self.current_data  = [array([])] * len(m)
-        self.current_data_sum_index = m.index("S")
+        if self.active_example is None:
+            self.matrices_refs = []
+            self.current_data  = [array([])] * len(m)
+            self.current_data_sum_index = m.index("S")
         # Initialize references as lists of (nr. of matrices) length
         # in order to be able to assign specific reference group to specific button group index
         self.matrices_refs = [None] * len(m)
