@@ -1,7 +1,7 @@
 # MOV - Matrix Optimization Visualizer
 GUI Tool for visualization of optimized matrix operations graphs
 
-![Main menu](https://github.com/PrzemyslawSamsel/GraphVisualiser/blob/main/Images/main_menu.png)
+![Main menu](https://github.com/PrzemyslawSamsel/GraphVisualiser/blob/main/Examples/mov_example.gif)
 
 ## Goal 
 Goal of the project
