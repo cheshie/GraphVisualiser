@@ -4,11 +4,15 @@ GUI Tool for visualization of optimized matrix operations graphs
 ![Main menu](https://github.com/PrzemyslawSamsel/GraphVisualiser/blob/main/Examples/mov_example.gif)
 
 ## Goal 
-The goal of this project is to develop universal tool for generating signal graphstructures. 
+The goal of this project is to develop universal tool for generating signal graph structures. 
 
 
 ## Examples
-Examples
+There are 4 exaples that can be used to familiarize oneself with the tool. All of them represents differend cases and can be accessed in a tools section in the file menu bar.
+1. The *Example 1* is an easy 3 matrix multiplication
+2. The *Example 2* is much more complex involving 7 matrices and works best when "stretch columns" parameter is unticked. The tool can have a problem with more complex structures so it is highly recomend to untick that parameter first when the graph looks bad. 
+3. The *Example 3* has the same problem as previouse one with the "stretch columns" parameter. This graph is even more complex involving 9 matrices and can take more time to load.
+4. The *Example 4* is and 4 matrices multiplication but with different number of input and output size. It also works best wit "stretch columns" parameter unmarked.
 
 ## Plot parameters
 
