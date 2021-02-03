@@ -33,3 +33,8 @@ The tool provides user with few parameters that can be manipulated in order to c
 Matrices can be loaded from files separately, filled manually, or filled from files automatically based on their names (must match!): 
 
 ![Main menu](https://github.com/PrzemyslawSamsel/GraphVisualiser/blob/main/Examples/fromfiles_mov.gif)
+
+## Exporting graph to a file
+You can export generated graph by right clicking anywhere on the plot and choosing option "Export". This is shown on the graphic below:
+
+![Main menu](https://github.com/PrzemyslawSamsel/GraphVisualiser/blob/main/Examples/export_data.gif)
